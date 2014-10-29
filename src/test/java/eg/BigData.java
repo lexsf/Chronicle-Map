@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,16 +45,14 @@ public class BigData {
 
     //    static AtomicInteger Highwatermark = new AtomicInteger(0);
     static {
-        builder.largeSegments(true);
         builder.actualSegments(8 * 1024);
         builder.entries(MAXSIZE);
         String dir = System.getProperty("dir", "/ocz/tmp");
         if (!new File("/ocz/tmp").exists()) dir = ".";
         String chmPath = dir + "/testmap-" + Long.toString(System.nanoTime(), 36);
         new File(chmPath).deleteOnExit();
-        System.out.println("ChronicleMap entries() = " + builder.entries());
         try {
-            theMap = builder.create(new File(chmPath));
+            theMap =  builder.file(new File(chmPath)).create();
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

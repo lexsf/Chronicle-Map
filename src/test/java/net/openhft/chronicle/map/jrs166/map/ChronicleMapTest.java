@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,49 +50,55 @@ public class ChronicleMapTest extends JSR166TestCase {
 
     static ChronicleMap<Integer, CharSequence> newShmIntString(int size) throws IOException {
 
+        ChronicleMapBuilder.of(Integer.class, CharSequence.class)
+                .entries(size).file(getPersistenceFile());
         return ChronicleMapBuilder.of(Integer.class, CharSequence.class)
-                .entries(size)
-                .create(getPersistenceFile());
+                .entries(size).create();
 
     }
 
     static ChronicleMap<ArrayList, CharSequence> newShmListBoolean(int size) throws IOException {
 
+        ChronicleMapBuilder.of(ArrayList.class, CharSequence.class)
+
+                .entries(size).file(getPersistenceFile());
         return ChronicleMapBuilder.of(ArrayList.class, CharSequence.class)
 
-                .entries(size).create(getPersistenceFile());
+                .entries(size).create();
 
     }
 
 
     static ChronicleMap<ArrayList, CharSequence> newShmListBoolean() throws IOException {
 
-        return ChronicleMapBuilder.of(ArrayList.class, CharSequence.class)
-
-                .create(getPersistenceFile());
+        ChronicleMapBuilder.of(ArrayList.class, CharSequence.class).file(getPersistenceFile());
+        return ChronicleMapBuilder.of(ArrayList.class, CharSequence.class).create();
 
     }
 
     static ChronicleMap<CharSequence, CharSequence> newShmStringString(int size) throws IOException {
 
+        ChronicleMapBuilder.of(CharSequence.class, CharSequence.class)
+
+                .entries(size).file(getPersistenceFile());
         return ChronicleMapBuilder.of(CharSequence.class, CharSequence.class)
 
-                .entries(size).create(getPersistenceFile());
+                .entries(size).create();
 
     }
 
 
     static ChronicleMap<Integer, CharSequence> newShmIntString() throws IOException {
 
-        return ChronicleMapBuilder.of(Integer.class, CharSequence.class)
-
-                .create(getPersistenceFile());
+        ChronicleMapBuilder.of(Integer.class, CharSequence.class).file(getPersistenceFile());
+        return ChronicleMapBuilder.of(Integer.class, CharSequence.class).create();
 
     }
 
     static ChronicleMap<BI, Boolean> newShmBiBoolean() throws IOException {
 
-        return ChronicleMapBuilder.of(BI.class, Boolean.class).create(getPersistenceFile());
+        ChronicleMapBuilder.of(BI.class, Boolean.class).file(getPersistenceFile());
+        return ChronicleMapBuilder.of(BI.class, Boolean.class).create();
 
     }
 
@@ -98,7 +106,7 @@ public class ChronicleMapTest extends JSR166TestCase {
      * Returns a new map from Integers 1-5 to Strings "A"-"E".
      */
     private static ChronicleMap map5() throws IOException {
-        ChronicleMap<Integer, CharSequence> map = newShmIntString(5);
+        ChronicleMap<Integer, CharSequence> map = newShmIntString(10);
         assertTrue(map.isEmpty());
         map.put(one, "A");
         map.put(two, "B");

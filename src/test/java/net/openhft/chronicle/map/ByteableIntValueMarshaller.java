@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.serialization.impl.ByteableMarshaller;
 import net.openhft.lang.io.Bytes;
 import net.openhft.lang.io.NativeBytes;
 import net.openhft.lang.io.serialization.BytesMarshaller;
@@ -49,7 +52,7 @@ enum ByteableIntValueMarshaller implements BytesMarshaller<IntValue> {
             if (intValue == null)
                 intValue = (IntValue) NativeBytes.UNSAFE.allocateInstance(DIRECT);
             Byteable biv = (Byteable) intValue;
-            biv.bytes(bytes, bytes.position());
+            ByteableMarshaller.setBytesAndOffset(biv, bytes);
             bytes.skip(biv.maxSize());
             return intValue;
         } catch (Exception e) {
@@ -63,7 +66,11 @@ enum DirectIntValueFactory implements ObjectFactory<IntValue> {
     INSTANCE;
 
     @Override
-    public IntValue create() throws Exception {
-        return (IntValue) NativeBytes.UNSAFE.allocateInstance(ByteableIntValueMarshaller.DIRECT);
+    public IntValue create() {
+        try {
+            return (IntValue) NativeBytes.UNSAFE.allocateInstance(ByteableIntValueMarshaller.DIRECT);
+        } catch (InstantiationException e) {
+            throw new AssertionError(e);
+        }
     }
 }

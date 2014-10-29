@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +29,7 @@ import static org.junit.Assert.fail;
 public class AcquireGetUsingMain {
     public static void main(String[] args) throws Exception {
         File file = new File(System.getProperty("java.io.tmpdir") + "/test1");
-        ChronicleMap<String, Data> theSharedMap = ChronicleMapBuilder.of(String.class, Data.class)
-                .create(file);
+        ChronicleMap<String, Data> theSharedMap = OffHeapUpdatableChronicleMapBuilder.of(String.class, Data.class).file(file).create();
         Data data = DataValueClasses.newDirectReference(Data.class);
         String processType = "testkey";
         if (theSharedMap.getUsing(processType, data) == null) {

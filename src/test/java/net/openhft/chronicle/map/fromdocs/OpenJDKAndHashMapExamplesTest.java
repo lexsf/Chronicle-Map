@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +21,8 @@ package net.openhft.chronicle.map.fromdocs;
 import net.openhft.affinity.AffinitySupport;
 import net.openhft.chronicle.map.ChronicleMap;
 import net.openhft.chronicle.map.ChronicleMapBuilder;
+import net.openhft.chronicle.map.OffHeapUpdatableChronicleMapBuilder;
 import net.openhft.lang.model.DataValueClasses;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -28,10 +30,12 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
+import static net.openhft.lang.model.DataValueClasses.directClassFor;
 import static org.junit.Assert.assertEquals;
 
 /**
- * These code fragments will appear in an article on OpenHFT.  These tests to ensure that the examples compile and behave as expected.
+ * These code fragments will appear in an article on OpenHFT. These tests to ensure that the examples compile
+ * and behave as expected.
  */
 public class OpenJDKAndHashMapExamplesTest {
     private static final SimpleDateFormat YYYYMMDD = new SimpleDateFormat("yyyyMMdd");
@@ -48,14 +52,15 @@ public class OpenJDKAndHashMapExamplesTest {
     }
 
     @Test
-    @Ignore
     public void bondExample() throws IOException, InterruptedException {
 
-
-        ChronicleMap<String, BondVOInterface> chm = ChronicleMapBuilder
+        File file = new File(TMP + "/chm-myBondPortfolioCHM-" + System.nanoTime());
+        file.deleteOnExit();
+        ChronicleMap<String, BondVOInterface> chm = OffHeapUpdatableChronicleMapBuilder
                 .of(String.class, BondVOInterface.class)
-                .entrySize(512)
-                .create(new File(TMP + "/chm-myBondPortfolioCHM"));
+                .keySize(10)
+                .file(file)
+                .create();
 
 
         BondVOInterface bondVO = DataValueClasses.newDirectReference(BondVOInterface.class);
@@ -72,11 +77,11 @@ public class OpenJDKAndHashMapExamplesTest {
         mpx1030.setAskPx(109.7);
         mpx1030.setBidPx(107.6);
 
-
-        ChronicleMap<String, BondVOInterface> chmB = ChronicleMapBuilder
+        ChronicleMap<String, BondVOInterface> chmB = OffHeapUpdatableChronicleMapBuilder
                 .of(String.class, BondVOInterface.class)
-                .entrySize(320)
-                .create(new File(TMP + "/chm-myBondPortfolioCHM"));
+                .keySize(10)
+                .file(file)
+                .create();
 
         // ZERO Copy but creates a new off heap reference each time
 
@@ -143,7 +148,7 @@ public class OpenJDKAndHashMapExamplesTest {
         // cleanup.
         chm.close();
         chmB.close();
-        new File("/dev/chm/myBondPortfolioCHM").delete();
+        file.delete();
 
     }
 

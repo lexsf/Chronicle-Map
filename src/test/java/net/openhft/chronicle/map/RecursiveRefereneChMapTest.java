@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +35,7 @@ public class RecursiveRefereneChMapTest {
         file.deleteOnExit();
         Map<String, StupidCycle> map = ChronicleMapBuilder.of(String.class, StupidCycle.class)
                 .entries(64)
-                .objectSerializer(JDKObjectSerializer.INSTANCE)
-                .create(file);
+                .objectSerializer(JDKObjectSerializer.INSTANCE).create();
         map.put("Test", new StupidCycle());
         map.put("Test2", new StupidCycle2());
         StupidCycle cycle = (StupidCycle) map.get("Test");

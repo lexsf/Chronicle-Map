@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,11 +75,9 @@ public class CHMLatencyTestMain {
         File file = File.createTempFile("testCHMLatency", "deleteme");
 //        File file = new File("testCHMLatency.deleteme");
         file.delete();
-        ChronicleMap<LongValue, LongValue> countersMap = ChronicleMapBuilder.of(LongValue.class, LongValue.class)
-
+        ChronicleMap<LongValue, LongValue> countersMap = OffHeapUpdatableChronicleMapBuilder.of(LongValue.class, LongValue.class)
                 .entries(KEYS)
-                .entrySize(24)
-                .create(file);
+                .entrySize(24).create();
 
         // add keys
         LongValue key = DataValueClasses.newInstance(LongValue.class);

@@ -16,44 +16,49 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.TcpReplicationConfig;
+import net.openhft.chronicle.hash.UdpReplicationConfig;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.io.IOException;
 
-public final class Replicators {
+final class Replicators {
 
     private Replicators() {
     }
 
-    public static Replicator tcp(final byte identifier,
-                                 final TcpReplicationConfig replicationConfig) {
+    static Replicator tcp(final TcpReplicationConfig replicationConfig) {
         return new Replicator() {
-            @Override
-            public byte identifier() {
-                return identifier;
-            }
 
             @Override
-            protected Closeable applyTo(ChronicleMapBuilder builder,
-                                        Replica map, Replica.EntryExternalizable entryExternalizable)
+            protected Closeable applyTo(@NotNull final AbstractChronicleMapBuilder builder,
+                                        @NotNull final Replica replica,
+                                        @NotNull final Replica.EntryExternalizable entryExternalizable,
+                                        final ChronicleMap chronicleMap)
                     throws IOException {
-                return new TcpReplicator(map, entryExternalizable, replicationConfig,
-                        builder.entrySize());
+
+                final KeyValueSerializer keyValueSerializer = new KeyValueSerializer(builder
+                        .keyBuilder, builder.valueBuilder);
+
+                StatelessServerConnector statelessServer = new StatelessServerConnector
+                        (keyValueSerializer, (VanillaChronicleMap) chronicleMap, builder.entrySize());
+
+                return new TcpReplicator(replica, entryExternalizable, replicationConfig,
+                        builder.entrySize(), statelessServer);
             }
         };
     }
 
-    public static Replicator udp(final byte identifier,
-                                 final UdpReplicationConfig replicationConfig) {
+    static Replicator udp(
+            final UdpReplicationConfig replicationConfig) {
         return new Replicator() {
-            @Override
-            public byte identifier() {
-                return identifier;
-            }
 
             @Override
-            protected Closeable applyTo(ChronicleMapBuilder builder,
-                                        Replica map, Replica.EntryExternalizable entryExternalizable)
+            protected Closeable applyTo(@NotNull final AbstractChronicleMapBuilder builder,
+                                        @NotNull final Replica map,
+                                        @NotNull final Replica.EntryExternalizable entryExternalizable,
+                                        final ChronicleMap chronicleMap)
                     throws IOException {
                 return new UdpReplicator(map, entryExternalizable, replicationConfig,
                         builder.entrySize());

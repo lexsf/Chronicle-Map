@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +22,10 @@ import net.openhft.lang.model.constraints.MaxSize;
 
 public interface BondVOInterface {
     /* add support for entry based locking */
+    @Deprecated()
     void busyLockEntry() throws InterruptedException;
 
+    @Deprecated()
     void unlockEntry();
 
     long getIssueDate();

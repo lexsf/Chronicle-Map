@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +19,13 @@
 package net.openhft.chronicle.map;
 
 
-import java.io.Closeable;
+import net.openhft.chronicle.hash.TcpReplicationConfig;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Rob Austin.
@@ -54,59 +58,25 @@ public class Builder {
     }
 
 
-    static <K, V> ChronicleMap<K, V> newShm(
-            int size, final ArrayBlockingQueue<byte[]> input,
-            final ArrayBlockingQueue<byte[]> output,
-            final byte localIdentifier, byte externalIdentifier,
-            Class<K> kClass, Class<V> vClass) throws IOException {
-        Replicator queue = QueueReplicator.of(localIdentifier, externalIdentifier, input, output);
+    public static <T extends ChronicleMap<Integer, Void>> T newMapVoid(
+            final byte identifier,
+            final int serverPort,
+            final InetSocketAddress... endpoints) throws IOException {
+        return (T) newTcpSocketShmBuilder(Integer.class, Void.class,
+                identifier, serverPort, endpoints).create();
+    }
+
+    public static <K, V> ChronicleMapBuilder<K, V> newTcpSocketShmBuilder(
+            Class<K> kClass, Class<V> vClass,
+            final byte identifier,
+            final int serverPort,
+            final InetSocketAddress... endpoints) throws IOException {
+        TcpReplicationConfig tcpConfig = TcpReplicationConfig.of(serverPort, endpoints)
+                .heartBeatInterval(1L, TimeUnit.SECONDS);
         return ChronicleMapBuilder.of(kClass, vClass)
-                .entries(size)
-                .addReplicator(queue)
-                .create(getPersistenceFile());
+                .replicators(identifier,  tcpConfig);
     }
 
-    static MapProvider<ReplicatedChronicleMap<Integer, ?, ?, Integer, ?, ?>> newShmIntInt(
-            int size, final ArrayBlockingQueue<byte[]> input,
-            final ArrayBlockingQueue<byte[]> output,
-            final byte localIdentifier, byte externalIdentifier) throws IOException {
 
-        Replicator queue = QueueReplicator.of(localIdentifier, externalIdentifier, input, output);
-        final ReplicatedChronicleMap<Integer, ?, ?, Integer, ?, ?> result =
-                (ReplicatedChronicleMap<Integer, ?, ?, Integer, ?, ?>) ChronicleMapBuilder
-                        .of(Integer.class, Integer.class)
-                        .entries(size)
-                        .addReplicator(queue)
-                        .create(getPersistenceFile());
-        QueueReplicator q = null;
-        for (Closeable closeable : result.closeables) {
-            if (closeable instanceof QueueReplicator) {
-                q = (QueueReplicator) closeable;
-                break;
-            }
-        }
-        if (q == null)
-            throw new AssertionError();
-        final QueueReplicator finalQ = q;
-        return new MapProvider<ReplicatedChronicleMap<Integer, ?, ?, Integer, ?, ?>>() {
-
-            @Override
-            public ReplicatedChronicleMap<Integer, ?, ?, Integer, ?, ?> getMap() {
-                return result;
-            }
-
-            @Override
-            public boolean isQueueEmpty() {
-                return finalQ.isEmpty();
-            }
-
-        };
-    }
-
-    interface MapProvider<T> {
-        T getMap();
-
-        boolean isQueueEmpty();
-    }
 
 }

@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -121,13 +123,14 @@ class LoopHelpers {
         return x;
     }
 
+
     public static String rightJustify(long n) {
         // There's probably a better way to do this...
         String field = "         ";
         String num = Long.toString(n);
         if (num.length() >= field.length())
             return num;
-        StringBuffer b = new StringBuffer(field);
+        StringBuilder b = new StringBuilder(field);
         b.replace(b.length() - num.length(), b.length(), num);
         return b.toString();
     }

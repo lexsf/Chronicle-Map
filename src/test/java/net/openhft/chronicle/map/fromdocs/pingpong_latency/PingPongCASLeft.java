@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,10 +92,13 @@ public class PingPongCASLeft {
         AffinitySupport.setThreadId();
 
         String TMP = System.getProperty("java.io.tmpdir");
+        ChronicleMapBuilder.of(String.class, BondVOInterface.class)
+
+                .entries(16)
+                .entrySize(64).file(new File(TMP + "/BondPortfolioCHM"));
         return ChronicleMapBuilder.of(String.class, BondVOInterface.class)
 
                 .entries(16)
-                .entrySize(64)
-                .create(new File(TMP + "/BondPortfolioCHM"));
+                .entrySize(64).create();
     }
 }

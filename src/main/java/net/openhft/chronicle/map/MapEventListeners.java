@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,13 +38,6 @@ public final class MapEventListeners {
         public final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
         @Override
-        public Object onGetMissing(ChronicleMap map,
-                                   Object key, Object usingValue) {
-            LOGGER.info("{} missed {}", map.file(), key);
-            return null;
-        }
-
-        @Override
         public void onGetFound(ChronicleMap map, Bytes entry, int metaDataBytes,
                                Object key, Object value) {
             logOperation(map, entry, metaDataBytes, " get ");
@@ -76,20 +71,13 @@ public final class MapEventListeners {
 
         @Override
         public void onRemove(ChronicleMap map, Bytes entry, int metaDataBytes,
-                             Object key, Object value, int pos, SharedSegment segment) {
+                             Object key, Object value, long pos, SharedSegment segment) {
             logOperation(map, entry, metaDataBytes, " remove ");
         }
     };
     private static final MapEventListener KEY_VALUE_LOGGING = new MapEventListener() {
         private static final long serialVersionUID = 0L;
         public final Logger LOGGER = LoggerFactory.getLogger(getClass());
-
-        @Override
-        public Object onGetMissing(ChronicleMap map,
-                                   Object key, Object usingValue) {
-            LOGGER.info("{} missed {}", map.file(), key);
-            return null;
-        }
 
         @Override
         public void onGetFound(ChronicleMap map, Bytes entry, int metaDataBytes,
@@ -105,7 +93,7 @@ public final class MapEventListeners {
 
         @Override
         public void onRemove(ChronicleMap map, Bytes entry, int metaDataBytes,
-                             Object key, Object value, int pos, SharedSegment segment) {
+                             Object key, Object value, long pos, SharedSegment segment) {
             LOGGER.info("{} remove {} was {}", map.file(), key, value);
         }
     };

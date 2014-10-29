@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +21,16 @@ package net.openhft.chronicle.map;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import net.openhft.lang.collection.SingleThreadedDirectBitSet;
+import net.openhft.lang.io.DirectStore;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.lang.reflect.Field;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
@@ -34,11 +42,11 @@ import static org.junit.Assert.assertTrue;
 @RunWith(value = Parameterized.class)
 public class IntIntMultiMapTest {
 
-    IntIntMultiMap map;
-    Multimap<Integer, Integer> referenceMap = HashMultimap.create();
-    private Class<? extends IntIntMultiMap> c;
+    MultiMap map;
+    Multimap<Long, Long> referenceMap = HashMultimap.create();
+    private Class<? extends MultiMap> c;
 
-    public IntIntMultiMapTest(Class<? extends IntIntMultiMap> c)
+    public IntIntMultiMapTest(Class<? extends MultiMap> c)
             throws Exception {
         this.c = c;
     }
@@ -46,25 +54,25 @@ public class IntIntMultiMapTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
+                {VanillaShortShortMultiMap.class},
                 {VanillaIntIntMultiMap.class},
-                {VanillaShortShortMultiMap.class}
         });
     }
 
-    private void initMap(int capacity) {
+    private void initMap(long capacity) {
         try {
-            map = c.getConstructor(int.class).newInstance(capacity);
+            map = c.getConstructor(long.class).newInstance(capacity);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     private void multiMapEquals() {
-        class Action implements IntIntMultiMap.EntryConsumer {
+        class Action implements MultiMap.EntryConsumer {
             int mapSize = 0;
 
             @Override
-            public void accept(int key, int value) {
+            public void accept(long key, long value) {
                 mapSize++;
                 assertTrue(referenceMap.containsEntry(key, value));
             }
@@ -74,24 +82,24 @@ public class IntIntMultiMapTest {
         assertEquals(referenceMap.size(), action.mapSize);
     }
 
-    private void valuesEqualsByKey(int k) {
-        List<Integer> values = new ArrayList<Integer>();
+    private void valuesEqualsByKey(long k) {
+        List<Long> values = new ArrayList<Long>();
         map.startSearch(k);
-        int v;
-        while ((v = map.nextPos()) >= 0)
+        long v;
+        while ((v = map.nextPos()) >= 0L)
             values.add(v);
-        Set<Integer> valueSet = new HashSet<Integer>(values);
+        Set<Long> valueSet = new HashSet<Long>(values);
         assertEquals(values.size(), valueSet.size());
-        assertEquals(new HashSet<Integer>(referenceMap.get(k)), valueSet);
+        assertEquals(new HashSet<Long>(referenceMap.get(k)), valueSet);
     }
 
-    private void put(int k, int v) {
+    private void put(long k, long v) {
         map.put(k, v);
         referenceMap.put(k, v);
     }
 
-    private void remove(int k, int v, boolean present) {
-        assertEquals(present, map.remove(k, v));
+    private void remove(long k, long v) {
+        map.remove(k, v);
         referenceMap.remove(k, v);
     }
 
@@ -112,23 +120,22 @@ public class IntIntMultiMapTest {
         put(1, 15);
         multiMapEquals();
 
-        remove(1, 11, true);
+        remove(1, 11);
         multiMapEquals();
-        remove(1, 11, false);
 
         valuesEqualsByKey(3);
         valuesEqualsByKey(1);
 
-        remove(1, 12, true);
+        remove(1, 12);
         multiMapEquals();
 
-        remove(1, 15, true);
+        remove(1, 15);
         multiMapEquals();
 
-        remove(1, 13, true);
+        remove(1, 13);
         multiMapEquals();
 
-        remove(1, 14, true);
+        remove(1, 14);
         multiMapEquals();
     }
 
@@ -143,5 +150,47 @@ public class IntIntMultiMapTest {
         map.remove(15, 1);
         map.startSearch(15);
         assertTrue(map.nextPos() < 0);
+    }
+
+    @Test
+    @Ignore("Very long running test")
+    public void testMaxCapacity() throws NoSuchFieldException, IllegalAccessException {
+        Field maxCapacityField = c.getDeclaredField("MAX_CAPACITY");
+        long maxCapacity = maxCapacityField.getLong(null);
+        Field entrySizeField = c.getDeclaredField("ENTRY_SIZE");
+        entrySizeField.setAccessible(true);
+        long entrySize = entrySizeField.getLong(null);
+        if (maxMemory() * 1024L < maxCapacity * entrySize * 3L / 2L) {
+            System.out.println("Skipped " + c + " maxCapacity test because there is not enough " +
+                    "memory in system");
+            return;
+        }
+        initMap(maxCapacity);
+        Random r = new Random();
+        int bound = maxCapacity > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) maxCapacity;
+        for (long i = 0L; i < maxCapacity; i++) {
+            map.put(r.nextInt(bound), i);
+        }
+        final SingleThreadedDirectBitSet bs =
+                new SingleThreadedDirectBitSet(new DirectStore(maxCapacity / 8).bytes());
+        map.forEach(new MultiMap.EntryConsumer() {
+            @Override
+            public void accept(long key, long value) {
+                bs.set(value);
+            }
+        });
+        assertTrue(bs.allSet(0L, maxCapacity));
+    }
+
+    private long maxMemory() {
+        File meminfo = new File("/proc/meminfo");
+        try {
+            try (Scanner sc = new Scanner(meminfo)) {
+                sc.next();
+                return sc.nextLong();
+            }
+        } catch (FileNotFoundException e) {
+            return -1;
+        }
     }
 }

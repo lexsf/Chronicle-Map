@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,10 +41,12 @@ public class StateMachineTutorial {
         try {
             File dataFile = new File(System.getProperty("java.io.tmpdir"), "hft-state-machine");
 
+            ChronicleMapBuilder.of(Integer.class, StateMachineData.class)
+
+                        .entries(8).file(dataFile);
             map = ChronicleMapBuilder.of(Integer.class, StateMachineData.class)
 
-                    .entries(8)
-                    .create(dataFile);
+                    .entries(8).create();
 
             if (args.length > 0) {
                 if ("0".equalsIgnoreCase(args[0])) {

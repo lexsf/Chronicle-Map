@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.ThrottlingConfig;
 import net.openhft.lang.io.ByteBufferBytes;
 import net.openhft.lang.io.Bytes;
 import net.openhft.lang.thread.NamedThreadFactory;
@@ -27,22 +30,15 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
+import java.nio.channels.*;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import static java.lang.Math.round;
 import static java.nio.channels.SelectionKey.OP_WRITE;
 import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static net.openhft.chronicle.map.ReplicatedChronicleMap.MAX_UNSIGNED_SHORT;
 
 /**
  * @author Rob Austin.
@@ -50,7 +46,10 @@ import static net.openhft.chronicle.map.ReplicatedChronicleMap.MAX_UNSIGNED_SHOR
 abstract class AbstractChannelReplicator implements Closeable {
 
     public static final int BITS_IN_A_BYTE = 8;
-    public static final int SIZE_OF_SHORT = 2;
+
+    public static final int SIZE_OF_SIZE = 4;
+    public static final int SIZE_OF_TRANSACTIONID = 8;
+
     private static final Logger LOG = LoggerFactory.getLogger(AbstractChannelReplicator.class);
     final Selector selector;
     final CloseablesManager closeables = new CloseablesManager();
@@ -65,13 +64,39 @@ abstract class AbstractChannelReplicator implements Closeable {
             throws IOException {
         executorService = Executors.newSingleThreadExecutor(
                 new NamedThreadFactory(name, true));
-        selector = Selector.open();
-        closeables.add(selector);
+        selector = openSelector(closeables);
 
         throttler = throttlingConfig.throttling(DAYS) > 0 ?
                 new Throttler(selector,
                         throttlingConfig.bucketInterval(MILLISECONDS),
                         maxEntrySizeBytes, throttlingConfig.throttling(DAYS)) : null;
+    }
+
+    static Selector openSelector(final CloseablesManager closeables) throws IOException {
+        Selector result = null;
+        try {
+            result = Selector.open();
+        } finally {
+            if (result != null)
+                closeables.add(result);
+        }
+        return result;
+    }
+
+    static SocketChannel openSocketChannel(final CloseablesManager closeables) throws IOException {
+        SocketChannel result = null;
+
+        try {
+            result = SocketChannel.open();
+        } finally {
+            if (result != null)
+                try {
+                    closeables.add(result);
+                } catch (IllegalStateException e) {
+                    // already closed
+                }
+        }
+        return result;
     }
 
     void addPendingRegistration(Runnable registration) {
@@ -112,6 +137,19 @@ abstract class AbstractChannelReplicator implements Closeable {
         isClosed = true;
         closeables.closeQuietly();
         executorService.shutdownNow();
+
+
+        try {
+            // we HAVE to be sure we have terminated before calling close() on the
+            // ReplicatedChronicleMap
+            // if this thread is still running and you close() the ReplicatedChronicleMap without
+            // fulling terminating this, you can cause the ReplicatedChronicleMap to attempt to
+            // process data on a map that has been closed, which would result in a
+            // core dump.
+            executorService.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            LOG.error("", e);
+        }
     }
 
     void closeEarlyAndQuietly(SelectableChannel channel) {
@@ -197,8 +235,9 @@ abstract class AbstractChannelReplicator implements Closeable {
 
 
         /**
-         * checks the number of bytes written in this interval, if this number of bytes exceeds a threshold,
-         * the selected will de-register the socket that is being written to, until the interval is finished.
+         * checks the number of bytes written in this interval, if this number of bytes exceeds a
+         * threshold, the selected will de-register the socket that is being written to, until the
+         * interval is finished.
          *
          * @throws ClosedChannelException
          */
@@ -261,22 +300,38 @@ abstract class AbstractChannelReplicator implements Closeable {
 
         @Override
         public boolean onEntry(final Bytes entry, final int chronicleId) {
-            in.skip(SIZE_OF_SHORT);
+
+            long pos0 = in.position();
+
+            // used to denote that this is not a stateless map event
+            in.writeByte(StatelessChronicleMap.EventId.STATEFUL_UPDATE.ordinal());
+
+            long sizeLocation = in.position();
+
+            // this is where we will store the size of the entry
+            in.skip(SIZE_OF_SIZE);
+
             final long start = in.position();
             externalizable.writeExternalEntry(entry, in, chronicleId);
 
             if (in.position() == start) {
-                in.position(in.position() - SIZE_OF_SHORT);
+                in.position(pos0);
                 return false;
             }
 
             // write the length of the entry, just before the start, so when we read it back
             // we read the length of the entry first and hence know how many preceding writer to read
-            final int entrySize = (int) (in.position() - start);
-            if (entrySize > MAX_UNSIGNED_SHORT)
+            final long entrySize = (int) (in.position() - start);
+            if (entrySize > Integer.MAX_VALUE)
                 throw new IllegalStateException("entry too large, the entry size=" + entrySize + ", " +
-                        "entries are limited to a size of " + MAX_UNSIGNED_SHORT);
-            in.writeUnsignedShort(start - SIZE_OF_SHORT, entrySize);
+                        "entries are limited to a size of " + Integer.MAX_VALUE);
+
+
+            int entrySize1 = (int) entrySize;
+            if (LOG.isDebugEnabled())
+                LOG.debug("sending entry of entrySize=" + entrySize1);
+
+            in.writeInt(sizeLocation, entrySize1);
 
             return true;
         }
@@ -374,5 +429,6 @@ abstract class AbstractChannelReplicator implements Closeable {
             connectionAttempts = 0;
         }
     }
+
 
 }

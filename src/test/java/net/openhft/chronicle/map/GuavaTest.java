@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.testing.features.MapFeature.*;
-import static net.openhft.chronicle.map.ChronicleMapTest.getPersistenceFile;
 
 
 public class GuavaTest extends TestCase {
@@ -106,7 +107,7 @@ public class GuavaTest extends TestCase {
         @Override
         Map<CharSequence, CharSequence> newMap() {
             try {
-                return builder.create(getPersistenceFile());
+                return builder.create();
             } catch (IOException e) {
                 throw new AssertionError(e);
             }

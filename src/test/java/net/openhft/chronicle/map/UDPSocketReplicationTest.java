@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +18,13 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.UdpReplicationConfig;
 import org.junit.After;
 import org.junit.Before;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.Inet4Address;
-
-import static net.openhft.chronicle.map.Replicators.udp;
 
 /**
  * Test  ReplicatedChronicleMap where the Replicated is over a TCP Socket
@@ -44,8 +45,7 @@ public class UDPSocketReplicationTest {
 
         return ChronicleMapBuilder.of(Integer.class, CharSequence.class)
                 .entries(1000)
-                .addReplicator(udp((byte) identifier, udpConfig))
-                .create(Builder.getPersistenceFile());
+                .replicators((byte) identifier, udpConfig).create();
     }
 
     @Before

@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +41,7 @@ public class ProcessInstanceLimiterMain implements Runnable {
         builder.entries(10000);
         builder.minSegments(2);
         File file = new File(System.getProperty("java.io.tmpdir") + "/" + sharedMapName);
-        this.theSharedMap = builder.create(file);
+        this.theSharedMap = builder.create();
         Thread t = new Thread(this, "ProcessInstanceLimiterMain updater");
         t.setDaemon(true);
         t.start();

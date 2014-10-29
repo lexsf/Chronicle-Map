@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.UdpReplicationConfig;
 import net.openhft.lang.io.ByteBufferBytes;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -33,22 +36,21 @@ import java.nio.channels.DatagramChannel;
  * it becomes available on TCP/IP. In order to not miss data, UdpReplicator should be used in conjunction with
  * the TCP Replicator.
  */
-class UdpReplicator extends UdpChannelReplicator implements Replica.ModificationNotifier, Closeable {
+public class UdpReplicator extends UdpChannelReplicator implements Replica.ModificationNotifier, Closeable {
 
     private static final Logger LOG =
             LoggerFactory.getLogger(UdpReplicator.class.getName());
 
-
-    UdpReplicator(@NotNull final Replica replica,
-                  @NotNull final Replica.EntryExternalizable entryExternalizable,
-                  @NotNull final UdpReplicationConfig replicationConfig,
-                  final int serializedEntrySize)
+    public UdpReplicator(@NotNull final Replica replica,
+                         @NotNull final Replica.EntryExternalizable entryExternalizable,
+                         @NotNull final UdpReplicationConfig replicationConfig,
+                         final int serializedEntrySize)
             throws IOException {
 
         super(replicationConfig, serializedEntrySize, replica.identifier());
 
         Replica.ModificationIterator modificationIterator = replica.acquireModificationIterator(
-                ChronicleMapBuilder.UDP_REPLICATION_MODIFICATION_ITERATOR_ID, this);
+                AbstractChronicleMapBuilder.UDP_REPLICATION_MODIFICATION_ITERATOR_ID, this);
 
         setReader(new UdpSocketChannelEntryReader(serializedEntrySize, entryExternalizable));
 
@@ -57,7 +59,6 @@ class UdpReplicator extends UdpChannelReplicator implements Replica.Modification
 
         start();
     }
-
 
     private static class UdpSocketChannelEntryReader implements EntryReader {
 
@@ -96,17 +97,17 @@ class UdpReplicator extends UdpChannelReplicator implements Replica.Modification
 
             final int bytesRead = in.position();
 
-            if (bytesRead < SIZE_OF_SHORT + SIZE_OF_SHORT)
+            if (bytesRead < SIZE_OF_SIZE + SIZE_OF_SIZE)
                 return;
 
             out.limit(in.position());
 
-            final short invertedSize = out.readShort();
-            final int size = out.readUnsignedShort();
+            final int invertedSize = out.readInt();
+            final int size = out.readInt();
 
             // check the the first 4 bytes are the inverted len followed by the len
             // we do this to check that this is a valid start of entry, otherwise we throw it away
-            if (((short) ~size) != invertedSize)
+            if ( ~size != invertedSize)
                 return;
 
             if (out.remaining() != size)
@@ -159,7 +160,7 @@ class UdpReplicator extends UdpChannelReplicator implements Replica.Modification
 
             out.clear();
             in.clear();
-            in.skip(SIZE_OF_SHORT);
+            in.skip(SIZE_OF_SIZE);
 
             final boolean wasDataRead = modificationIterator.nextEntry(entryCallback, 0);
 
@@ -169,7 +170,7 @@ class UdpReplicator extends UdpChannelReplicator implements Replica.Modification
             }
 
             // we'll write the size inverted at the start
-            in.writeShort(0, ~(in.readUnsignedShort(SIZE_OF_SHORT)));
+            in.writeShort(0, ~(in.readUnsignedShort(SIZE_OF_SIZE)));
             out.limit((int) in.position());
 
             return socketChannel.write(out);

@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +18,12 @@
 
 package net.openhft.chronicle.map;
 
+import junit.framework.Assert;
 import org.junit.Test;
-import org.testng.Assert;
 
 import java.io.IOException;
 
 import static net.openhft.chronicle.map.Alignment.NO_ALIGNMENT;
-import static net.openhft.chronicle.map.Builder.getPersistenceFile;
 
 public class Issue42 {
 
@@ -41,11 +42,9 @@ public class Issue42 {
 
         final ChronicleMap<CharSequence, CharSequence> map = ChronicleMapBuilder
                 .of(CharSequence.class, CharSequence.class)
-                .entryAndValueAlignment(NO_ALIGNMENT)
                 .entrySize(18)
                 .entries(15000000)
-                .minSegments(128)
-                .create(getPersistenceFile());
+                .minSegments(128).create();
 
         for (int i = 0; i < 10000000; ++i) {
             String s = String.valueOf(i);

@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +19,11 @@
 package net.openhft.chronicle.map;
 
 import net.openhft.lang.io.ByteBufferBytes;
+import net.openhft.lang.model.Byteable;
+import net.openhft.lang.model.DataValueClasses;
 import net.openhft.lang.values.IntValue;
-import net.openhft.lang.values.IntValue$$Native;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.Closeable;
@@ -31,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 
 import static net.openhft.chronicle.map.Builder.getPersistenceFile;
-import static net.openhft.chronicle.map.TCPSocketReplication4WayMapTest.newTcpSocketShmBuilder;
+import static net.openhft.chronicle.map.Builder.newTcpSocketShmBuilder;
 import static net.openhft.chronicle.map.TCPSocketReplication4WayMapTest.newTcpSocketShmIntValueString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -44,20 +46,19 @@ import static org.junit.Assert.assertTrue;
 
 public class TCPSocketReplicationIntValueTest {
 
-
     private ChronicleMapBuilder<IntValue, CharSequence> map1Builder;
     private ChronicleMap<IntValue, CharSequence> map1;
     private ChronicleMap<IntValue, CharSequence> map2;
-    private IntValue$$Native value;
+    private IntValue value;
 
     @Before
     public void setup() throws IOException {
-        value = new IntValue$$Native();
-        value.bytes(new ByteBufferBytes(ByteBuffer.allocateDirect(4)), 0);
+        value = DataValueClasses.newDirectReference(IntValue.class);
+        ((Byteable) value).bytes(new ByteBufferBytes(ByteBuffer.allocateDirect(4)), 0);
         map1Builder = newTcpSocketShmBuilder(IntValue.class, CharSequence.class,
                 (byte) 1, 8076, new InetSocketAddress("localhost", 8077));
-        map1 = map1Builder.keyMarshaller(ByteableIntValueMarshaller.INSTANCE)
-                .create(getPersistenceFile());
+        map1Builder.keyMarshaller(ByteableIntValueMarshaller.INSTANCE).file(getPersistenceFile());
+        map1 = map1Builder.keyMarshaller(ByteableIntValueMarshaller.INSTANCE).create();
         map2 = newTcpSocketShmIntValueString((byte) 2, 8077);
     }
 
@@ -76,7 +77,6 @@ public class TCPSocketReplicationIntValueTest {
 
 
     @Test
-    @Ignore
     public void test3() throws IOException, InterruptedException {
 
         map1.put(set(5), "EXAMPLE-2");
@@ -88,15 +88,15 @@ public class TCPSocketReplicationIntValueTest {
         assertTrue(!map1.isEmpty());
     }
 
-    private IntValue$$Native set(int x) {
+    private IntValue set(int x) {
 
         value.setValue(x);
         return value;
     }
 
 
+    // see https://higherfrequencytrading.atlassian.net/browse/HCOLL-148
     @Test
-    @Ignore
     public void test() throws IOException, InterruptedException {
 
         map1.put(set(1), "EXAMPLE-1");
@@ -106,9 +106,9 @@ public class TCPSocketReplicationIntValueTest {
         map2.put(set(5), "EXAMPLE-2");
         map2.put(set(6), "EXAMPLE-2");
 
-        map1.remove(2);
-        map2.remove(3);
-        map1.remove(3);
+        map1.remove(set(2));
+        map2.remove(set(3));
+        map1.remove(set(3));
         map2.put(set(5), "EXAMPLE-2");
 
         // allow time for the recompilation to resolve
@@ -154,7 +154,6 @@ public class TCPSocketReplicationIntValueTest {
 
     @Test
     public void testSoakTestWithRandomData() throws IOException, InterruptedException {
-
 
         final long start = System.currentTimeMillis();
         System.out.print("SoakTesting ");

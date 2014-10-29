@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +23,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 final class CloseablesManager implements Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(CloseablesManager.class.getName());
 
     private boolean isClosed = false;
-    private final List<Closeable> closeables = new ArrayList<Closeable>();
+    private final Set<Closeable> closeables = new LinkedHashSet<Closeable>();
 
     private void checkState() {
         if (isClosed)
@@ -89,5 +91,9 @@ final class CloseablesManager implements Closeable {
 
     boolean isClosed() {
         return isClosed;
+    }
+
+    public boolean isEmpty() {
+        return closeables.isEmpty();
     }
 }

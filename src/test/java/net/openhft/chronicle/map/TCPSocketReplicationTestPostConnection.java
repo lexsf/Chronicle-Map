@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +25,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static net.openhft.chronicle.map.TCPSocketReplication4WayMapTest.newTcpSocketShmBuilder;
+import static net.openhft.chronicle.map.Builder.newTcpSocketShmBuilder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -77,8 +79,9 @@ public class TCPSocketReplicationTestPostConnection {
         ChronicleMapBuilder<Integer, CharSequence> map2aBuilder =
                 newTcpSocketShmBuilder(Integer.class, CharSequence.class,
                         (byte) 2, 8077, new InetSocketAddress("localhost", 8076));
+        map2aBuilder.file(Builder.getPersistenceFile());
         final ChronicleMap<Integer, CharSequence> map2a =
-                map2aBuilder.create(Builder.getPersistenceFile());
+                map2aBuilder.create();
         map1 = TCPSocketReplication4WayMapTest.newTcpSocketShmIntString((byte) 1, 8076);
 
         Thread.sleep(1);
@@ -91,7 +94,8 @@ public class TCPSocketReplicationTestPostConnection {
         map1.put(6, "EXAMPLE-1");
 
         // recreate map2 with new unique file
-        map2 = map2aBuilder.create(Builder.getPersistenceFile());
+        map2aBuilder.file(Builder.getPersistenceFile());
+        map2 = map2aBuilder.create();
 
 
         // allow time for the recompilation to resolve

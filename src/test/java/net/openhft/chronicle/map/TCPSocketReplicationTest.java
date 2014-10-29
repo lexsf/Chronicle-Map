@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +20,6 @@ package net.openhft.chronicle.map;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.Closeable;
@@ -27,7 +28,7 @@ import java.net.InetSocketAddress;
 import java.util.Random;
 
 import static net.openhft.chronicle.map.Builder.getPersistenceFile;
-import static net.openhft.chronicle.map.TCPSocketReplication4WayMapTest.newTcpSocketShmBuilder;
+import static net.openhft.chronicle.map.Builder.newTcpSocketShmBuilder;
 import static net.openhft.chronicle.map.TCPSocketReplication4WayMapTest.newTcpSocketShmIntString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -49,7 +50,8 @@ public class TCPSocketReplicationTest {
         ChronicleMapBuilder<Integer, CharSequence> map1Builder =
                 newTcpSocketShmBuilder(Integer.class, CharSequence.class,
                         (byte) 1, 8076, new InetSocketAddress("localhost", 8077));
-        map1 = map1Builder.create(getPersistenceFile());
+        map1Builder.file(getPersistenceFile());
+        map1 = map1Builder.create();
         map2 = newTcpSocketShmIntString((byte) 2, 8077);
     }
 
@@ -136,7 +138,6 @@ public class TCPSocketReplicationTest {
 
 
     @Test
-    @Ignore
     public void testSoakTestWithRandomData() throws IOException, InterruptedException {
         final long start = System.currentTimeMillis();
         System.out.print("SoakTesting ");
@@ -167,34 +168,7 @@ public class TCPSocketReplicationTest {
     }
 
 
-    @Ignore
-    @Test
-    public void testObjectAllocationWithYourKit() throws IOException, InterruptedException {
 
-
-        System.out.print("SoakTesting ");
-        for (; ; ) {
-
-            Random rnd = new Random(0);
-            for (int i = 1; i < 10; i++) {
-
-                final int select = rnd.nextInt(2);
-                final ChronicleMap<Integer, CharSequence> map = select > 0 ? map1 : map2;
-
-                switch (rnd.nextInt(2)) {
-                    case 0:
-                        map.put(rnd.nextInt(1000) /* + select * 100 */, "test");
-                        break;
-                    case 1:
-                        map.remove(rnd.nextInt(1000) /*+ select * 100 */);
-                        break;
-                }
-            }
-
-        }
-
-
-    }
 
 
 }

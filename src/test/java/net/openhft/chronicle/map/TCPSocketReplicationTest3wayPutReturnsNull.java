@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.TcpReplicationConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,12 +48,10 @@ public class TCPSocketReplicationTest3wayPutReturnsNull {
             final int serverPort,
             final InetSocketAddress... endpoints) throws IOException {
         TcpReplicationConfig tcpConfig = TcpReplicationConfig.of(serverPort, endpoints);
-        return (T) ChronicleMapBuilder.of(Integer.class, CharSequence.class)
 
-                .entries(1000)
+        return (T) ChronicleMapBuilder.of(Integer.class, CharSequence.class)
                 .putReturnsNull(true)
-                .addReplicator(Replicators.tcp(identifier, tcpConfig))
-                .create(Builder.getPersistenceFile());
+                .replicators(identifier, tcpConfig).create();
     }
 
 

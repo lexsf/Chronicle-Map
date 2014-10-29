@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +37,7 @@ public class CHMMetaDataTest {
                 new StringStringMapEventListener(new AtomicLong(1));
         ChronicleMap<String, String> map = ChronicleMapBuilder.of(String.class, String.class)
                 .metaDataBytes(8)
-                .eventListener(listener)
-                .create(file);
+                .eventListener(listener).create();
 
         try {
             map.put("a", "aye");
@@ -90,7 +91,7 @@ public class CHMMetaDataTest {
 
         @Override
         public void onRemove(ChronicleMap<String, String> map, Bytes entry, int metaDataBytes,
-                             String key, String value, int pos, SharedSegment segment) {
+                             String key, String value, long pos, SharedSegment segment) {
             assertEquals(8, metaDataBytes);
             System.out.println("Removed " + key + "/" + value + " with ts of " + entry.readLong(0));
         }

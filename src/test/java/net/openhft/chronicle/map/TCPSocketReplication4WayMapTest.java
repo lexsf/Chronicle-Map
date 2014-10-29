@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,9 +28,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static net.openhft.chronicle.map.Builder.getPersistenceFile;
-import static net.openhft.chronicle.map.Replicators.tcp;
+import static net.openhft.chronicle.map.Builder.newTcpSocketShmBuilder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -44,25 +44,15 @@ public class TCPSocketReplication4WayMapTest {
     private ChronicleMap<Integer, CharSequence> map3;
     private ChronicleMap<Integer, CharSequence> map4;
 
-    public static <K, V> ChronicleMapBuilder<K, V> newTcpSocketShmBuilder(
-            Class<K> kClass, Class<V> vClass,
-            final byte identifier,
-            final int serverPort,
-            final InetSocketAddress... endpoints) throws IOException {
-        TcpReplicationConfig tcpConfig = TcpReplicationConfig.of(serverPort, endpoints)
-                .heartBeatInterval(1L, SECONDS);
-        return ChronicleMapBuilder.of(kClass, vClass)
-                .entries(20000L)
-                .addReplicator(tcp(identifier, tcpConfig));
-    }
-
     public static <T extends ChronicleMap<Integer, CharSequence>> T newTcpSocketShmIntString(
             final byte identifier,
             final int serverPort,
             final InetSocketAddress... endpoints) throws IOException {
         return (T) newTcpSocketShmBuilder(Integer.class, CharSequence.class,
-                identifier, serverPort, endpoints).create(getPersistenceFile());
+                identifier, serverPort, endpoints).create();
     }
+
+
 
     static ChronicleMap<IntValue, CharSequence> newTcpSocketShmIntValueString(
             final byte identifier,
@@ -71,8 +61,7 @@ public class TCPSocketReplication4WayMapTest {
         return newTcpSocketShmBuilder(IntValue.class, CharSequence.class,
                 identifier, serverPort, endpoints)
                 .entries(20000L)
-                .keyMarshaller(ByteableIntValueMarshaller.INSTANCE)
-                .create(getPersistenceFile());
+                .keyMarshaller(ByteableIntValueMarshaller.INSTANCE).create();
     }
 
 

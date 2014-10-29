@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +18,7 @@
 
 package net.openhft.chronicle.map;
 
+import net.openhft.chronicle.hash.UdpReplicationConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,10 +41,10 @@ import static java.nio.channels.SelectionKey.OP_WRITE;
 
 
 /**
- * The UdpReplicator attempts to read the data ( but it does not enforce or grantee delivery ), typically, you
- * should use the UdpReplicator if you have a large number of nodes, and you wish to receive the data before
- * it becomes available on TCP/IP. In order to not miss data, UdpReplicator should be used in conjunction with
- * the TCP Replicator.
+ * The UdpReplicator attempts to read the data ( but it does not enforce or grantee delivery ),
+ * typically, you should use the UdpReplicator if you have a large number of nodes, and you wish to
+ * receive the data before it becomes available on TCP/IP. In order to not miss data, UdpReplicator
+ * should be used in conjunction with the TCP Replicator.
  */
 class UdpChannelReplicator extends AbstractChannelReplicator implements Replica.ModificationNotifier, Closeable {
 
@@ -67,7 +70,8 @@ class UdpChannelReplicator extends AbstractChannelReplicator implements Replica.
      * @throws IOException
      */
     UdpChannelReplicator(@NotNull final UdpReplicationConfig replicationConfig,
-                         final int maxPayloadSize, final byte localIdentifier)
+                         final int maxPayloadSize,
+                         final byte localIdentifier)
             throws IOException {
 
         super("UdpReplicator-" + localIdentifier, replicationConfig.throttlingConfig(),
@@ -197,7 +201,7 @@ class UdpChannelReplicator extends AbstractChannelReplicator implements Replica.
     public void onChange() {
         // the write have to be enabled on the same thread as the selector
         shouldEnableOpWrite = true;
-        selector.wakeup();
+
     }
 
     private void enableWrites() {

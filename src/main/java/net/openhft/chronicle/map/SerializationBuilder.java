@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,70 +18,96 @@
 
 package net.openhft.chronicle.map;
 
-import net.openhft.chronicle.map.serialization.*;
-import net.openhft.chronicle.map.serialization.impl.*;
+import net.openhft.lang.threadlocal.Provider;
+import net.openhft.lang.threadlocal.ThreadLocalCopies;
+import net.openhft.chronicle.hash.serialization.*;
+import net.openhft.chronicle.hash.serialization.impl.*;
 import net.openhft.lang.io.Bytes;
-import net.openhft.lang.io.serialization.*;
+import net.openhft.lang.io.serialization.BytesMarshallable;
+import net.openhft.lang.io.serialization.BytesMarshaller;
+import net.openhft.lang.io.serialization.ObjectFactory;
+import net.openhft.lang.io.serialization.ObjectSerializer;
 import net.openhft.lang.io.serialization.impl.*;
 import net.openhft.lang.model.Byteable;
-import net.openhft.lang.model.DataValueClasses;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Externalizable;
+import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Modifier;
 
 import static net.openhft.chronicle.map.Objects.hash;
-import static net.openhft.chronicle.map.serialization.SizeMarshallers.stopBit;
+import static net.openhft.chronicle.hash.serialization.SizeMarshallers.stopBit;
 
 final class SerializationBuilder<E> implements Cloneable {
-    
+
+    private static boolean concreteClass(Class c) {
+        return !c.isInterface() && !Modifier.isAbstract(c.getModifiers());
+    }
+
     private static boolean marshallerUseFactory(Class c) {
         return Byteable.class.isAssignableFrom(c) ||
                 BytesMarshallable.class.isAssignableFrom(c) ||
                 Externalizable.class.isAssignableFrom(c);
     }
 
+    private static boolean instancesAreMutable(Class c) {
+        return c != String.class;
+    }
+
     enum Role {KEY, VALUE}
+
     private enum CopyingInterop {FROM_MARSHALLER, FROM_WRITER}
 
     private final Serializable bufferIdentity;
     final Class<E> eClass;
+    private boolean instancesAreMutable;
     private SizeMarshaller sizeMarshaller = stopBit();
     private BytesReader<E> reader;
     private Object interop;
     private CopyingInterop copyingInterop = null;
     private MetaBytesInterop<E, ?> metaInterop;
     private MetaProvider<E, ?, ?> metaInteropProvider;
-    private  ObjectFactory<E> factory;
+    private long maxSize;
+    private ObjectFactory<E> factory;
 
     @SuppressWarnings("unchecked")
     SerializationBuilder(Class<E> eClass, Role role) {
         this.bufferIdentity = role;
         this.eClass = eClass;
-        Class<E> classForMarshaller = marshallerUseFactory(eClass) && eClass.isInterface() ?
-                DataValueClasses.directClassFor(eClass) : eClass;
+        instancesAreMutable = instancesAreMutable(eClass);
 
-        ObjectFactory<E> factory = null;
-        if (role == Role.VALUE) {
-            factory = marshallerUseFactory(eClass) ?
-                    new AllocateInstanceObjectFactory(
-                            eClass.isInterface() ? classForMarshaller : eClass) :
-                    NullObjectFactory.INSTANCE;
-        }
+        ObjectFactory<E> factory = concreteClass(eClass) && marshallerUseFactory(eClass) ?
+                new NewInstanceObjectFactory<E>(eClass) :
+                NullObjectFactory.<E>of();
 
-        if (Byteable.class.isAssignableFrom(eClass)) {
-            agileMarshaller(ByteableMarshaller.of((Class) classForMarshaller), factory);
+        if (concreteClass(eClass) && Byteable.class.isAssignableFrom(eClass)) {
+            agileMarshaller(ByteableMarshaller.of((Class) eClass), factory);
         } else if (eClass == CharSequence.class || eClass == String.class) {
             reader((BytesReader<E>) CharSequenceReader.of(), factory);
             writer((BytesWriter<E>) CharSequenceWriter.instance());
+        } else if (eClass == Void.class) {
+            agileMarshaller((AgileBytesMarshaller<E>) VoidMarshaller.INSTANCE, factory);
         } else if (eClass == Long.class) {
             agileMarshaller((AgileBytesMarshaller<E>) LongMarshaller.INSTANCE, factory);
+        } else if (eClass == Double.class) {
+            agileMarshaller((AgileBytesMarshaller<E>) DoubleMarshaller.INSTANCE, factory);
+        } else if (eClass == Integer.class) {
+            agileMarshaller((AgileBytesMarshaller<E>) IntegerMarshaller.INSTANCE, factory);
         } else if (eClass == byte[].class) {
             reader((BytesReader<E>) ByteArrayMarshaller.INSTANCE, factory);
             interop((BytesInterop<E>) ByteArrayMarshaller.INSTANCE);
-        } else {
-            marshaller(chooseMarshaller(eClass, classForMarshaller), factory);
+        } else if (eClass == char[].class) {
+            reader((BytesReader<E>) CharArrayMarshaller.INSTANCE, factory);
+            interop((BytesInterop<E>) CharArrayMarshaller.INSTANCE);
+        } else if (concreteClass(eClass)) {
+            BytesMarshaller<E> marshaller = chooseMarshaller(eClass, eClass);
+            if (marshaller != null)
+                marshaller(marshaller, factory);
+        }
+        if (concreteClass(eClass) && marshallerUseFactory(eClass)) {
+            factory(factory);
         }
     }
 
@@ -89,11 +117,7 @@ final class SerializationBuilder<E> implements Cloneable {
             return new BytesMarshallableMarshaller(classForMarshaller);
         if (Externalizable.class.isAssignableFrom(eClass))
             return new ExternalizableMarshaller(classForMarshaller);
-        if (eClass == Integer.class)
-            return (BytesMarshaller<E>) IntegerMarshaller.INSTANCE;
-        if (eClass == Double.class)
-            return (BytesMarshaller<E>) DoubleMarshaller.INSTANCE;
-        return SerializableMarshaller.INSTANCE;
+        return null;
     }
 
     private SerializationBuilder<E> copyingInterop(CopyingInterop copyingInterop) {
@@ -119,7 +143,6 @@ final class SerializationBuilder<E> implements Cloneable {
 
     public SerializationBuilder<E> writer(BytesWriter<E> writer) {
         return copyingInterop(CopyingInterop.FROM_WRITER)
-                .sizeMarshaller(stopBit())
                 .setInterop(writer)
                 .metaInterop(CopyingMetaBytesInterop
                         .<E, BytesWriter<E>>forBytesWriter(bufferIdentity));
@@ -129,7 +152,6 @@ final class SerializationBuilder<E> implements Cloneable {
                                               ObjectFactory<E> factory) {
         if (factory == null) factory = this.factory;
         return copyingInterop(CopyingInterop.FROM_MARSHALLER)
-                .sizeMarshaller(stopBit())
                 .reader(BytesReaders.fromBytesMarshaller(marshaller), factory)
                 .setInterop(marshaller)
                 .metaInterop(CopyingMetaBytesInterop
@@ -137,14 +159,70 @@ final class SerializationBuilder<E> implements Cloneable {
     }
 
     public SerializationBuilder<E> maxSize(long maxSize) {
-        boolean mutable = eClass != String.class; // for example
         if (copyingInterop == CopyingInterop.FROM_MARSHALLER) {
+            this.maxSize = maxSize;
             metaInteropProvider(CopyingMetaBytesInterop
-                    .<E, BytesMarshaller<E>>providerForBytesMarshaller(mutable, maxSize));
+                    .<E, BytesMarshaller<E>>providerForBytesMarshaller(
+                            instancesAreMutable, maxSize));
         } else if (copyingInterop == CopyingInterop.FROM_WRITER) {
+            this.maxSize = maxSize;
             metaInteropProvider(CopyingMetaBytesInterop
-                    .<E, BytesWriter<E>>providerForBytesWriter(mutable, maxSize));
+                    .<E, BytesWriter<E>>providerForBytesWriter(instancesAreMutable, maxSize));
         }
+        return this;
+    }
+
+    public SerializationBuilder<E> constantSizeBySample(E sampleObject) {
+        Object originalInterop = this.interop;
+        Provider interopProvider = Provider.of(originalInterop.getClass());
+        ThreadLocalCopies copies = interopProvider.getCopies(null);
+        Object interop = interopProvider.get(copies, originalInterop);
+        copies = metaInteropProvider.getCopies(copies);
+        MetaBytesWriter metaInterop;
+        if (maxSize > 0) {
+            // this loop is very dumb: tries to find buffer size, sufficient to serialize
+            // the object, by trying to serialize to small buffers first and doubling the buffer
+            // size on _any_ Exception (it may be IllegalArgument, IndexOutOfBounds, IllegalState,
+            // see JLANG-17 issue).
+            // TODO The question is: couldn't this cause JVM crash without throwing an exception?
+            findSufficientSerializationSize:
+            while (true) {
+                MetaProvider metaInteropProvider = this.metaInteropProvider;
+                try {
+                    metaInterop = metaInteropProvider.get(
+                            copies, this.metaInterop, interop, sampleObject);
+                    break findSufficientSerializationSize;
+                } catch (Exception e) {
+                    // assuming nobody need > 512 mb _constant size_ keys/values
+                    if (maxSize > 512 * 1024 * 1024) {
+                        throw e;
+                    }
+                    maxSize(maxSize * 2);
+                }
+            }
+        } else {
+            MetaProvider metaInteropProvider = this.metaInteropProvider;
+            metaInterop = metaInteropProvider.get(copies, this.metaInterop, interop, sampleObject);
+        }
+        long constantSize = metaInterop.size(interop, sampleObject);
+        // set max size once more, because current maxSize could be x64 or x2 larger than needed
+        maxSize(constantSize);
+        sizeMarshaller(SizeMarshallers.constant(constantSize));
+        return this;
+    }
+
+    public SerializationBuilder<E> objectSerializer(ObjectSerializer serializer) {
+        if (reader == null || interop == null) {
+            ObjectFactory<E> factory = this.factory;
+            if (factory == null)
+                factory = NullObjectFactory.INSTANCE;
+            marshaller(new SerializableMarshaller(serializer), factory);
+        }
+        return this;
+    }
+
+    public SerializationBuilder<E> instancesAreMutable(boolean mutable) {
+        this.instancesAreMutable = mutable;
         return this;
     }
 
@@ -254,67 +332,46 @@ final class SerializationBuilder<E> implements Cloneable {
         }
     }
 
-    private enum IntegerMarshaller implements BytesMarshaller<Integer> {
-        INSTANCE;
+    private static class SerializableMarshaller implements BytesMarshaller {
+        private static final long serialVersionUID = 0L;
 
-        @Override
-        public void write(Bytes bytes, Integer v) {
-            bytes.writeInt(v);
+        private final ObjectSerializer serializer;
+
+        private SerializableMarshaller(ObjectSerializer serializer) {
+            this.serializer = serializer;
         }
-
-        @Nullable
-        @Override
-        public Integer read(Bytes bytes) {
-            return bytes.readInt();
-        }
-
-        @Nullable
-        @Override
-        public Integer read(Bytes bytes, @Nullable Integer v) {
-            return bytes.readInt();
-        }
-    }
-
-    private enum DoubleMarshaller implements BytesMarshaller<Double> {
-        INSTANCE;
-
-        @Override
-        public void write(Bytes bytes, Double v) {
-            bytes.writeDouble(v);
-        }
-
-        @Nullable
-        @Override
-        public Double read(Bytes bytes) {
-            return bytes.readDouble();
-        }
-
-        @Nullable
-        @Override
-        public Double read(Bytes bytes, @Nullable Double v) {
-            return bytes.readDouble();
-        }
-    }
-
-
-    private enum SerializableMarshaller implements BytesMarshaller {
-        INSTANCE;
 
         @Override
         public void write(Bytes bytes, Object obj) {
-            bytes.writeObject(obj);
+            try {
+                serializer.writeSerializable(bytes, obj, null);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
         }
 
         @Nullable
         @Override
         public Object read(Bytes bytes) {
-            return bytes.readObject();
+            try {
+                return serializer.readSerializable(bytes, null, null);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException(e);
+            }
         }
 
         @Nullable
         @Override
         public Object read(Bytes bytes, @Nullable Object obj) {
-            return bytes.readInstance(null, obj);
+            try {
+                return serializer.readSerializable(bytes, null, obj);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 

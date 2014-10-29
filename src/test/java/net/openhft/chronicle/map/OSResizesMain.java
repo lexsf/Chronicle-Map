@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,10 +36,8 @@ public class OSResizesMain {
     public static void main(String[] args) throws IOException, InterruptedException {
         File file = File.createTempFile("over-sized", "deleteme");
         ChronicleMap<String, String> map = ChronicleMapBuilder.of(String.class, String.class)
-
-                .entrySize(1024 * 1024)
-                .entries(1024 * 1024)
-                .create(file);
+                .entrySize(100 * 1024 * 1024)
+                .entries(1000000).create();
         for (int i = 0; i < 10000; i++) {
             char[] chars = new char[i];
             Arrays.fill(chars, '+');
@@ -48,6 +48,10 @@ public class OSResizesMain {
                 file.length() / 1e9,
                 run("du", "-h", file.getAbsolutePath()).split("\\s")[0],
                 run("grep", "over-sized", "/proc/" + Jvm.getProcessId() + "/maps").split("\\s")[0]);
+        // show up in top.
+        long time = System.currentTimeMillis();
+        while (time + 20000 > System.currentTimeMillis())
+            Thread.yield();
         map.close();
         file.delete();
     }

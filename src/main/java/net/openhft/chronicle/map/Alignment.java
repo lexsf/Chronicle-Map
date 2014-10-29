@@ -1,5 +1,7 @@
 /*
- * Copyright 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+ * Copyright 2014 Higher Frequency Trading
+ *
+ * http://www.higherfrequencytrading.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +20,15 @@ package net.openhft.chronicle.map;
 
 import net.openhft.lang.io.Bytes;
 
-
+/**
+ * Memory addresses alignment strategies.
+ *
+ * @see OffHeapUpdatableChronicleMapBuilder#entryAndValueAlignment(Alignment)
+ */
 public enum Alignment {
+    /**
+     * Doesn't align memory addresses.
+     */
     NO_ALIGNMENT {
         @Override
         void alignPositionAddr(Bytes bytes) {
@@ -37,6 +46,9 @@ public enum Alignment {
         }
     },
 
+    /**
+     * Aligns memory addresses on 4-byte boundary.
+     */
     OF_4_BYTES {
         @Override
         void alignPositionAddr(Bytes bytes) {
@@ -54,6 +66,9 @@ public enum Alignment {
         }
     },
 
+    /**
+     * Aligns memory addresses on 8-byte boundary.
+     */
     OF_8_BYTES {
         @Override
         void alignPositionAddr(Bytes bytes) {
